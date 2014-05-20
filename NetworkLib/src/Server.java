@@ -43,6 +43,7 @@ public class Server {
 					socket = serverSocket.accept();
 					//start new communication Thread
 					System.out.println("Client connected");
+					//TODO: Add to HashMap
 					CommunicationThread commThread = new CommunicationThread(socket);
 					new Thread(commThread).start();
 				} catch (IOException e) {
