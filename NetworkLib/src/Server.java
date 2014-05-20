@@ -82,11 +82,5 @@ public class Server {
 			}
 		}
 	}//inner class ends
-	
-	public static void main(String[] args) throws IOException
-	{
-		Server s = new Server(5000);
-		//HODOR!
-		s.start();
-	}
+
 }
