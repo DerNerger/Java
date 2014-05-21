@@ -5,11 +5,12 @@ import java.io.InputStreamReader;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.HashMap;
+import java.util.Scanner;
 
 
 public class Server {
 	private int port;
-	private HashMap<String, Socket> connectedClients;
+	private HashMap<String, ConnectedClient> connectedClients;
 	private ServerSocket serverSocket;
 	private Thread acceptThread;
 	
@@ -19,11 +20,47 @@ public class Server {
 		connectedClients = new HashMap<>();
 	}
 	
+	//server Methods
 	public void start() throws IOException
 	{
 		serverSocket = new ServerSocket(port);
 		this.acceptThread = new Thread(new AcceptThread());
 		this.acceptThread.start();
+	}
+	
+	public void writeToAll(String msg)
+	{
+		for(ConnectedClient client : connectedClients.values())
+			client.writeMessage(msg);
+	}
+	
+	public void writeToClient(String msg, String clientName)
+	{
+		if(!connectedClients.containsKey(clientName))
+			throw new IllegalArgumentException("Client existiert nicht");
+		connectedClients.get(clientName).writeMessage(msg);
+	}
+	
+	//diese Methoden sollten in einer Unterklasse ueberschrieben werden
+	public void handleClientMessage(String msg, ConnectedClient connectedClient)
+	{
+		System.out.print(connectedClient.getName() + ": ");
+		System.out.println(msg);
+	}
+	
+	public void handleClientConnected(ConnectedClient connectedClient) throws IOException
+	{
+		System.out.print(connectedClient.getName());
+		System.out.println(" connected");
+
+		//add client to hashMap
+		connectedClients.put(connectedClient.getName(), connectedClient);
+	}
+	
+	public void handleClientLeft(ConnectedClient connectedClient)
+	{
+		System.out.print(connectedClient.getName());
+		System.out.println(" left the Server");
 	}
 	
 	//inner Classes
@@ -37,15 +74,26 @@ public class Server {
 	{
 		@Override
 		public void run() {
-			Socket socket = null;
+			Socket clientSocket = null;
 			while (!Thread.currentThread().isInterrupted()) {
 				try {
-					socket = serverSocket.accept();
+					clientSocket = serverSocket.accept();
+					
+					//generate a Client name
+					String generatedSessionId = ConnectedClient.generateSessionId();
+					//generiere neue session-id falls vorhandene schon existiert
+					while(connectedClients.containsKey(generatedSessionId))
+						generatedSessionId = ConnectedClient.generateSessionId();
+					
+					//create a new connectedClients
+					ConnectedClient cc = new ConnectedClient(generatedSessionId, clientSocket);
+					
 					//start new communication Thread
-					System.out.println("Client connected");
-					//TODO: Add to HashMap
-					CommunicationThread commThread = new CommunicationThread(socket);
+					CommunicationThread commThread = new CommunicationThread(cc);
 					new Thread(commThread).start();
+					
+					//handle the connection
+					handleClientConnected(cc);
 				} catch (IOException e) {
 					System.out.println(e.getMessage());
 				}		
@@ -59,9 +107,12 @@ public class Server {
 	private class CommunicationThread implements Runnable
 	{
 		private BufferedReader input;
+		private ConnectedClient connectedClient;
 		
-		public CommunicationThread(Socket clientSocket) throws IOException
+		public CommunicationThread(ConnectedClient connectedClient) throws IOException
 		{
+			this.connectedClient = connectedClient;
+			Socket clientSocket = connectedClient.getClientSocket();
 			InputStream is = clientSocket.getInputStream();
 			InputStreamReader isr = new InputStreamReader(is);
 			input = new BufferedReader(isr);
@@ -71,16 +122,32 @@ public class Server {
 		public void run() {
 			while(!Thread.currentThread().isInterrupted())
 			{
-				String msg = null;
 				try {
-					msg = input.readLine();
+					String str = input.readLine();
+					if(str==null)
+					{
+						handleClientLeft(connectedClient);
+						connectedClients.remove(connectedClient.getName());
+						connectedClient.getClientSocket().close();
+						break;
+					}
+					handleClientMessage(str, connectedClient);
 				} catch (IOException e) {
-					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}
-				System.out.println(msg);
 			}
 		}
 	}//inner class ends
-
+	
+	public static void main(String args[]) throws IOException
+	{
+		Server s = new Server(5555);
+		s.start();
+		Scanner sc = new Scanner(System.in);
+		while(true)
+		{
+			String msg = sc.nextLine();
+			s.writeToAll(msg);
+		}
+	}
 }
