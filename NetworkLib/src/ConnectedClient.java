@@ -2,17 +2,12 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
-import java.math.BigInteger;
 import java.net.Socket;
-import java.security.SecureRandom;
-
 
 public class ConnectedClient {
 	private String sessionId;
 	private Socket clientSocket;
 	private PrintWriter output;
-	
-	private static SecureRandom randomNameGenerator = new SecureRandom();
 	
 	public ConnectedClient(String sessionId, Socket clientSocket) throws IOException
 	{
@@ -29,16 +24,11 @@ public class ConnectedClient {
 		output.flush();
 	}
 
-	public String getName() {
+	public String getSessionId() {
 		return sessionId;
 	}
 
 	public Socket getClientSocket() {
 		return clientSocket;
-	}
-	
-	public static String generateSessionId()
-	{
-		return new BigInteger(130,randomNameGenerator).toString(32);
 	}
 }

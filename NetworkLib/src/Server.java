@@ -2,8 +2,10 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.math.BigInteger;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.security.SecureRandom;
 import java.util.HashMap;
 import java.util.Scanner;
 
@@ -13,11 +15,13 @@ public class Server {
 	private HashMap<String, ConnectedClient> connectedClients;
 	private ServerSocket serverSocket;
 	private Thread acceptThread;
+	private static SecureRandom sessionIdGenerator;
 	
 	public Server(int port) throws IOException
 	{
 		this.port = port;
 		connectedClients = new HashMap<>();
+		sessionIdGenerator = new SecureRandom();
 	}
 	
 	//server Methods
@@ -41,25 +45,30 @@ public class Server {
 		connectedClients.get(clientName).writeMessage(msg);
 	}
 	
+	private String generateSessionId()
+	{
+		return new BigInteger(130,sessionIdGenerator).toString(32);
+	}
+	
 	//diese Methoden sollten in einer Unterklasse ueberschrieben werden
 	public void handleClientMessage(String msg, ConnectedClient connectedClient)
 	{
-		System.out.print(connectedClient.getName() + ": ");
+		System.out.print(connectedClient.getSessionId() + ": ");
 		System.out.println(msg);
 	}
 	
 	public void handleClientConnected(ConnectedClient connectedClient) throws IOException
 	{
-		System.out.print(connectedClient.getName());
+		System.out.print(connectedClient.getSessionId());
 		System.out.println(" connected");
 
 		//add client to hashMap
-		connectedClients.put(connectedClient.getName(), connectedClient);
+		connectedClients.put(connectedClient.getSessionId(), connectedClient);
 	}
 	
 	public void handleClientLeft(ConnectedClient connectedClient)
 	{
-		System.out.print(connectedClient.getName());
+		System.out.print(connectedClient.getSessionId());
 		System.out.println(" left the Server");
 	}
 	
@@ -80,10 +89,10 @@ public class Server {
 					clientSocket = serverSocket.accept();
 					
 					//generate a Client name
-					String generatedSessionId = ConnectedClient.generateSessionId();
+					String generatedSessionId = generateSessionId();
 					//generiere neue session-id falls vorhandene schon existiert
 					while(connectedClients.containsKey(generatedSessionId))
-						generatedSessionId = ConnectedClient.generateSessionId();
+						generatedSessionId = generateSessionId();
 					
 					//create a new connectedClients
 					ConnectedClient cc = new ConnectedClient(generatedSessionId, clientSocket);
@@ -91,6 +100,9 @@ public class Server {
 					//start new communication Thread
 					CommunicationThread commThread = new CommunicationThread(cc);
 					new Thread(commThread).start();
+					
+					//add client to hashMap
+					connectedClients.put(cc.getSessionId(), cc);
 					
 					//handle the connection
 					handleClientConnected(cc);
@@ -127,7 +139,7 @@ public class Server {
 					if(str==null)
 					{
 						handleClientLeft(connectedClient);
-						connectedClients.remove(connectedClient.getName());
+						connectedClients.remove(connectedClient.getSessionId());
 						connectedClient.getClientSocket().close();
 						break;
 					}
@@ -138,16 +150,4 @@ public class Server {
 			}
 		}
 	}//inner class ends
-	
-	public static void main(String args[]) throws IOException
-	{
-		Server s = new Server(5555);
-		s.start();
-		Scanner sc = new Scanner(System.in);
-		while(true)
-		{
-			String msg = sc.nextLine();
-			s.writeToAll(msg);
-		}
-	}
 }
