@@ -1,9 +1,5 @@
 import java.io.IOException;
-import java.util.LinkedList;
-import java.util.Queue;
 import java.util.Scanner;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
 
 
 public class ProtocolServer extends Server implements NetworkInterface{
@@ -62,22 +58,5 @@ public class ProtocolServer extends Server implements NetworkInterface{
 		if(!hasPackets())
 			throw new RuntimeException("No Packets to Recieve");
 		return networkController.getNextPacket();
-	}
-
-	
-	public static void main(String args[]) throws IOException
-	{
-		IProtocol protocol = new ChatProtocol();
-		ProtocolServer s = new ProtocolServer(5555,protocol);
-		s.start();
-		
-		Scanner sc = new Scanner(System.in);
-		while(true)
-		{
-			String msg = sc.nextLine();
-			ChatMessagePacket cmp = new ChatMessagePacket("server", "all", msg);
-			s.sendPacket(cmp);
-		}
-	}
-	
+	}	
 }
