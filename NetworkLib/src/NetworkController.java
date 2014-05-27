@@ -93,10 +93,8 @@ public class NetworkController {
 	private void send(Packet p)
 	{
 		String msgToSend = protocol.printPacket(p);
-		if(p.getReceiverSessionId().contains("all"))
-			networkInterface.writeToAll(msgToSend);
-		else
-			networkInterface.writeToClient(msgToSend, p.getReceiverSessionId());
+		String target = p.getReceiverSessionId();
+		networkInterface.writeMessage(msgToSend, target);
 	}
 	
 	//xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx

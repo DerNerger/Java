@@ -39,6 +39,15 @@ public class ProtocolServer extends Server implements NetworkInterface{
 		networkController.addEvent(NetworkEvent.ClientLeft, clientSessionId);
 	}
 	
+	@Override
+	public void writeMessage(String msgToSend, String target)
+	{
+		if(target.contains("all"))
+			writeToAll(msgToSend);
+		else
+			writeToClient(msgToSend, target);
+	}
+	
 	public void sendPacket(Packet p) {
 		networkController.sendPacket(p);
 	}

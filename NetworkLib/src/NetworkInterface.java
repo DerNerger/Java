@@ -1,5 +1,4 @@
 
 public interface NetworkInterface {
-	void writeToAll(String msgToSend);
-	void writeToClient(String msgToSend, String sessionID);
+	void writeMessage(String msgToSend, String target);
 }
