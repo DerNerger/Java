@@ -49,7 +49,6 @@ public class ProtocolServer extends Server implements NetworkInterface{
 	}
 	
 	public void sendPacket(Packet p) {
-		System.out.println("Packet wurde gesendet");
 		networkController.sendPacket(p);
 	}
 	
