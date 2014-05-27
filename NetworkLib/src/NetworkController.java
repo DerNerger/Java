@@ -113,7 +113,6 @@ public class NetworkController {
 				packetsToSendLock.lock();
 				if(packetsToSend.size()>0)
 				{
-					packetsToSendLock.lock();
 					Packet packetToSend = packetsToSend.poll();
 					send(packetToSend);
 				}
