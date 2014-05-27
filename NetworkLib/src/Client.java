@@ -10,6 +10,7 @@ public class Client {
 	{
 		clientSocket = new Socket(host,port);
 		System.out.println("Connected");
+		//lol
 	}
 
 }
