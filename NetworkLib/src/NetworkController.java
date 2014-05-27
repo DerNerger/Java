@@ -62,7 +62,12 @@ public class NetworkController {
 		case ClientLeft:
 			p = protocol.getClientLeftPacket(SessionIdSender);
 			break;
-
+		case ConnectedToServer:
+			p=protocol.getConnectedToServerPacket();
+			break;
+		case ConnectionLost:
+			p=protocol.getConnectionLostPacket();
+			break;
 		default:
 			throw new RuntimeException("NetworkEventType is wrong");
 		}

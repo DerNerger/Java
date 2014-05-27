@@ -23,6 +23,22 @@ public class ChatProtocol implements IProtocol{
 		String receiver = "server";
 		return new ChatMessagePacket(sessionId, receiver, msg);
 	}
+	
+	@Override
+	public Packet getConnectedToServerPacket() {
+		String msg = "connected to Server";
+		String sender = "server";
+		String receiver = "client";
+		return new ChatMessagePacket(sender, receiver, msg);
+	}
+
+	@Override
+	public Packet getConnectionLostPacket() {
+		String msg = "lost connection to Server";
+		String sender = "server";
+		String receiver = "client";
+		return new ChatMessagePacket(sender, receiver, msg);
+	}
 
 	@Override
 	public String printPacket(Packet p) {
@@ -34,5 +50,4 @@ public class ChatProtocol implements IProtocol{
 		String msg = cmp.getMsg();
 		return "receiver="+receiver+",msg="+msg;
 	}
-
 }
