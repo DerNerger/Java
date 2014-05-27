@@ -1,3 +1,3 @@
 public enum NetworkEvent {
-	ClientConnected, ClientLeft, ConnectionLost
+	ClientConnected, ClientLeft, ConnectionLost, ConnectedToServer
 }
