@@ -6,130 +6,55 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 
-public class ProtocolServer extends Server{
+public class ProtocolServer extends Server implements NetworkInterface{
 	
-	private IProtocol protocol;
-	private Thread packetSenderThread;
+	private NetworkController networkController;
 	
-	private Queue<Packet> packetsToSend;
-	private Lock packetsToSendLock;
-	
-	private Queue<Packet> receivedPackets;
-	private Lock receivedPacketsLock;
-	private int receivedPacketsCount;
-	private int packetsToSendCont;
-	
-
+	//Konstruktor
 	public ProtocolServer(int port, IProtocol protocol) throws IOException {
 		super(port);
-		this.protocol = protocol;
-		
-		packetsToSend = new LinkedList<Packet>();
-		receivedPackets = new LinkedList<>();
-		packetsToSendLock = new ReentrantLock();
-		receivedPacketsLock = new ReentrantLock();
-		receivedPacketsCount = 0;
-		
-		packetSenderThread = new Thread(new PacketSender());
-		packetSenderThread.start();
+		networkController = new NetworkController(protocol, this);
 	}
 	
-	//fuegt das Packet p in die queue ein, sodass es gesendet werden kann
-	public void sendPacket(Packet p)
+	
+	//Methoden
+	@Override
+	protected void handleClientMessage(String msg, ConnectedClient connectedClient)
 	{
-		packetsToSendLock.lock();
-		packetsToSend.offer(p);
-		packetsToSendLock.unlock();
-		packetsToSendCont ++;
+		String clientSessionId = connectedClient.getSessionId();
+		networkController.addMessage(msg, clientSessionId);
 	}
-
-	//gibt das Packet zurueck, was am laengsten in der queue wartet
+	
+	@Override
+	protected void handleClientConnected(ConnectedClient connectedClient) throws IOException
+	{
+		String clientSessionId = connectedClient.getSessionId();
+		networkController.addEvent(NetworkEvent.ClientConnected, clientSessionId);
+	}
+	
+	@Override
+	protected void handleClientLeft(ConnectedClient connectedClient)
+	{
+		String clientSessionId = connectedClient.getSessionId();
+		networkController.addEvent(NetworkEvent.ClientLeft, clientSessionId);
+	}
+	
+	public void sendPacket(Packet p) {
+		networkController.sendPacket(p);
+	}
+	
+	public boolean hasPackets()
+	{
+		return networkController.hasPacketsToProcess();
+	}
+	
 	public Packet getNextPacket()
 	{
-		if(receivedPacketsCount==0)
-			throw new RuntimeException("No Packets to recieve");
-		receivedPacketsLock.lock();
-		Packet p = receivedPackets.poll();
-		receivedPacketsLock.unlock();
-		receivedPacketsCount --;
-		return p;
+		if(!hasPackets())
+			throw new RuntimeException("No Packets to Recieve");
+		return networkController.getNextPacket();
 	}
-	
-	@Override
-	public void handleClientMessage(String msg, ConnectedClient connectedClient)
-	{
-		Packet p = protocol.parsePacket(msg, connectedClient.getSessionId());
-		receivedPacketsLock.lock();
-		receivedPackets.offer(p);
-		receivedPacketsLock.unlock();
-		receivedPacketsCount ++;
-	}
-	
-	@Override
-	public void handleClientConnected(ConnectedClient connectedClient) throws IOException
-	{
-		Packet p = protocol.getClientConnectedPacket(connectedClient.getSessionId());
-		receivedPacketsLock.lock();
-		receivedPackets.offer(p);
-		receivedPacketsLock.unlock();
-		receivedPacketsCount ++;
-	}
-	
-	@Override
-	public void handleClientLeft(ConnectedClient connectedClient)
-	{
-		Packet p = protocol.getClientLeftPacket(connectedClient.getSessionId());
-		receivedPacketsLock.lock();
-		receivedPackets.offer(p);
-		receivedPacketsLock.unlock();
-		receivedPacketsCount ++;
-	}
-	
-	public boolean hasPacketsToProcess()
-	{
-		receivedPacketsLock.lock();
-		boolean hptp = receivedPackets.size()>0;
-		receivedPacketsLock.unlock();
-		return hptp;
-	}
-	
-	public int getReceivedPacketsCount()
-	{
-		return receivedPacketsCount;
-	}
-	
-	public int getPacketsToSendCount()
-	{
-		return packetsToSendCont;
-	}
-	
-	private void send(Packet p)
-	{
-		String msgToSend = protocol.printPacket(p);
-		if(p.getReceiverSessionId().contains("all"))
-			super.writeToAll(msgToSend);
-		else
-			super.writeToClient(msgToSend, p.getReceiverSessionId());
-	}
-	
-	//inner classes
-	private class PacketSender implements Runnable
-	{
-		@Override
-		public void run() {
-			while(!Thread.currentThread().isInterrupted())
-			{
-				if(packetsToSendCont>0)
-				{
-					packetsToSendLock.lock();
-					Packet packetToSend = packetsToSend.poll();
-					send(packetToSend);
-					packetsToSendLock.unlock();
-					packetsToSendCont --;
-				}
-			}
-		}
-	}
+
 	
 	public static void main(String args[]) throws IOException
 	{
@@ -145,4 +70,5 @@ public class ProtocolServer extends Server{
 			s.sendPacket(cmp);
 		}
 	}
+	
 }

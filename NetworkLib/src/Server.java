@@ -51,13 +51,13 @@ public class Server {
 	}
 	
 	//diese Methoden sollten in einer Unterklasse ueberschrieben werden
-	public void handleClientMessage(String msg, ConnectedClient connectedClient)
+	protected void handleClientMessage(String msg, ConnectedClient connectedClient)
 	{
 		System.out.print(connectedClient.getSessionId() + ": ");
 		System.out.println(msg);
 	}
 	
-	public void handleClientConnected(ConnectedClient connectedClient) throws IOException
+	protected void handleClientConnected(ConnectedClient connectedClient) throws IOException
 	{
 		System.out.print(connectedClient.getSessionId());
 		System.out.println(" connected");
@@ -66,7 +66,7 @@ public class Server {
 		connectedClients.put(connectedClient.getSessionId(), connectedClient);
 	}
 	
-	public void handleClientLeft(ConnectedClient connectedClient)
+	protected void handleClientLeft(ConnectedClient connectedClient)
 	{
 		System.out.print(connectedClient.getSessionId());
 		System.out.println(" left the Server");

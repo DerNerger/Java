@@ -3,11 +3,11 @@
 public class ChatProtocol implements IProtocol{
 
 	@Override
-	public Packet parsePacket(String msg, String sessionId) {
+	public Packet parsePacket(String msg, String sessionIdSender) {
 		String [] content = msg.split(",");
 		String receiver = content[1].split("=")[1];
 		String message = content[2].split("=")[1];
-		return new ChatMessagePacket(sessionId, receiver, message);
+		return new ChatMessagePacket(sessionIdSender, receiver, message);
 	}
 
 	@Override
@@ -30,10 +30,9 @@ public class ChatProtocol implements IProtocol{
 			throw new RuntimeException("Packet ist vom fehlerhaften Typ "+p.getType());
 		
 		ChatMessagePacket cmp = (ChatMessagePacket) p;
-		String sender = cmp.getSenderSessionId();
 		String receiver = cmp.getReceiverSessionId();
 		String msg = cmp.getMsg();
-		return "sender="+sender+",receiver="+receiver+",msg="+msg;
+		return "receiver="+receiver+",msg="+msg;
 	}
 
 }
