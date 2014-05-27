@@ -16,6 +16,8 @@ public class ProtocolServer extends Server{
 	
 	private Queue<Packet> receivedPackets;
 	private Lock receivedPacketsLock;
+	private int receivedPacketsCount;
+	private int packetsToSendCont;
 	
 
 	public ProtocolServer(int port, IProtocol protocol) throws IOException {
@@ -26,6 +28,7 @@ public class ProtocolServer extends Server{
 		receivedPackets = new LinkedList<>();
 		packetsToSendLock = new ReentrantLock();
 		receivedPacketsLock = new ReentrantLock();
+		receivedPacketsCount = 0;
 		
 		packetSenderThread = new Thread(new PacketSender());
 		packetSenderThread.start();
@@ -37,14 +40,18 @@ public class ProtocolServer extends Server{
 		packetsToSendLock.lock();
 		packetsToSend.offer(p);
 		packetsToSendLock.unlock();
+		packetsToSendCont ++;
 	}
 
 	//gibt das Packet zurueck, was am laengsten in der queue wartet
 	public Packet getNextPacket()
 	{
+		if(receivedPacketsCount==0)
+			throw new RuntimeException("No Packets to recieve");
 		receivedPacketsLock.lock();
 		Packet p = receivedPackets.poll();
 		receivedPacketsLock.unlock();
+		receivedPacketsCount --;
 		return p;
 	}
 	
@@ -55,6 +62,7 @@ public class ProtocolServer extends Server{
 		receivedPacketsLock.lock();
 		receivedPackets.offer(p);
 		receivedPacketsLock.unlock();
+		receivedPacketsCount ++;
 	}
 	
 	@Override
@@ -64,6 +72,7 @@ public class ProtocolServer extends Server{
 		receivedPacketsLock.lock();
 		receivedPackets.offer(p);
 		receivedPacketsLock.unlock();
+		receivedPacketsCount ++;
 	}
 	
 	@Override
@@ -73,6 +82,7 @@ public class ProtocolServer extends Server{
 		receivedPacketsLock.lock();
 		receivedPackets.offer(p);
 		receivedPacketsLock.unlock();
+		receivedPacketsCount ++;
 	}
 	
 	public boolean hasPacketsToProcess()
@@ -83,10 +93,23 @@ public class ProtocolServer extends Server{
 		return hptp;
 	}
 	
+	public int getReceivedPacketsCount()
+	{
+		return receivedPacketsCount;
+	}
+	
+	public int getPacketsToSendCount()
+	{
+		return packetsToSendCont;
+	}
+	
 	private void send(Packet p)
 	{
 		String msgToSend = protocol.printPacket(p);
-		super.writeToClient(msgToSend, p.getReceiverSessionId());
+		if(p.getReceiverSessionId().contains("all"))
+			super.writeToAll(msgToSend);
+		else
+			super.writeToClient(msgToSend, p.getReceiverSessionId());
 	}
 	
 	//inner classes
@@ -96,10 +119,14 @@ public class ProtocolServer extends Server{
 		public void run() {
 			while(!Thread.currentThread().isInterrupted())
 			{
-				packetsToSendLock.lock();
-				Packet packetToSend = packetsToSend.poll();
-				send(packetToSend);
-				packetsToSendLock.unlock();
+				if(packetsToSendCont>0)
+				{
+					packetsToSendLock.lock();
+					Packet packetToSend = packetsToSend.poll();
+					send(packetToSend);
+					packetsToSendLock.unlock();
+					packetsToSendCont --;
+				}
 			}
 		}
 	}
@@ -114,7 +141,8 @@ public class ProtocolServer extends Server{
 		while(true)
 		{
 			String msg = sc.nextLine();
-			s.writeToAll(msg);
+			ChatMessagePacket cmp = new ChatMessagePacket("server", "all", msg);
+			s.sendPacket(cmp);
 		}
 	}
 }
