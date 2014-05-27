@@ -6,7 +6,9 @@ public class ChatProtocol implements IProtocol{
 	public Packet parsePacket(String msg, String sessionIdSender) {
 		String [] content = msg.split(",");
 		String receiver = content[0].split("=")[1];
-		String message = content[1].split("=")[1];
+		String message = "empty";
+		if(content[1].split("=").length>1)
+			message = content[1].split("=")[1];
 		return new ChatMessagePacket(sessionIdSender, receiver, message);
 	}
 
