@@ -29,12 +29,6 @@ public class Client {
 		InputStream is = clientSocket.getInputStream();
 		InputStreamReader isr = new InputStreamReader(is);
 		input=new BufferedReader(isr);
-		
-		//start CommunicationThread
-		CommunicationThread thread = new CommunicationThread();
-		new Thread(thread).start();
-		
-		handleConnection();
 	}
 	
 	//ClientMethods
@@ -44,18 +38,27 @@ public class Client {
 		output.flush();
 	}
 	
+	public void connect()
+	{
+		//start CommunicationThread
+		CommunicationThread thread = new CommunicationThread();
+		new Thread(thread).start();
+		
+		handleConnection();
+	}
+	
 	//diese Methoden sollten ueberschrieben werden
-	public void handleConnection()
+	protected void handleConnection()
 	{
 		System.out.println("connected to Server");
 	}
 	
-	public void handleConnectionLost()
+	protected void handleConnectionLost()
 	{
 		System.out.println("connection lost");
 	}
 	
-	public void handleServerMessage(String msg)
+	protected void handleServerMessage(String msg)
 	{
 		System.out.print("Server: ");
 		System.out.println(msg);
@@ -86,20 +89,4 @@ public class Client {
 		}
 		
 	}
-	
-	
-
-	public static void main(String[] args) throws UnknownHostException, IOException
-	{
-		Client c = new Client(5555, "192.168.0.16");
-		Scanner sc = new Scanner(System.in);
-		
-		while(true)
-		{
-			String msg = sc.nextLine();
-			c.writeToServer(msg);
-		}
-	}
-	
-	
 }
