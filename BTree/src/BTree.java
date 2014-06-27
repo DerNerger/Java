@@ -1,287 +1,307 @@
-import java.util.LinkedList;
-import java.util.Queue;
-
 
 public class BTree<T extends Comparable<T>> {
 
 	private int degree;
-	private int currentCount;
 	private boolean isLeaf;
-	private Pointer<T> left;
-	private Pointer<T> fatherPointer;
-	private BTree<T> fatherTree;
+	private Node<T> left;
+	private int size = 0;
+	private Father<T> father;
 	
 	public BTree(int degree)
 	{
 		this.degree = degree;
-		currentCount = 0;
+		left = new Node<T>();
 		isLeaf = true;
-		fatherPointer = null;
-		fatherTree = null;
-		left = new Pointer<>();
+		this.father = null;
+		this.father = new Father<T>();
 	}
 	
-	public BTree(int degree, Pointer<T> left, Pointer<T> fatherPointer, BTree<T> fatherTree)
+	public BTree(BTree<T> fatherTree, Node<T> fatherNode)
 	{
-		this.degree = degree;
-		currentCount = degree;
-		this.fatherPointer = fatherPointer;
-		this.fatherTree = fatherTree;
-		this.left = left;
-		isLeaf = left.getSon() == null;
-	}
-	
-	public T getElement(T element)
-	{
-		Pointer<T> current = left;
-		while(current.hasNext())
-		{
-			Node<T> node = current.getNext();
-			int comp = element.compareTo(node.getElem());
-			if(comp == 0)
-				return node.getElem();
-			if(comp < 0)
-				if(isLeaf)
-					throw new IllegalArgumentException("element not found");
-				else
-					return current.getSon().getElement(element);
-			current = current.getNext().getP();
-		}
-		if(isLeaf)
-			throw new IllegalArgumentException("element not found");
-		else
-			return current.getSon().getElement(element);
+		this.degree = fatherTree.degree;
+		this.father = new Father<T>();
+		father.setFatherTree(fatherTree);
+		father.setFatherNode(fatherNode);
+		isLeaf = true;
 	}
 	
 	public void insert(T elem)
 	{
-		Pointer<T> current = left;
-		while(current.hasNext())
+		Node<T> nodeToInsert = new Node<>(elem);
+		Node<T> current = left;
+		while(!current.isLast())
 		{
-			Node<T> node = current.getNext();
-			int comp = elem.compareTo(node.getElem());
+			int comp = current.compareTo(nodeToInsert);
 			if(comp == 0)
-				throw new IllegalArgumentException("no duplicate elements");
-			if(comp < 0)
-			{
-				if(isLeaf)
-				{
-					Pointer<T> newPointer = new Pointer<>(node,current);
-					Node<T> newNode = new Node<T>(elem, newPointer);
-					current.setNext(newNode);
-					currentCount++;
-					checkOverflow();
-					return;
-				}
-				else
-				{
-					current.getSon().insert(elem);
-					return;
-				}
-			}
+				throw new IllegalArgumentException("dublicatet elements!");
+			if(comp > 0)
+				break;
 			else
-				current = node.getP();
+				current = current.getNext();
 		}
 		if(isLeaf)
 		{
-			current.setNext(new Node<T>(elem));
-			currentCount++;
+			if(current == left)
+				left = nodeToInsert;
+			else
+				current.getPrev().setNext(nodeToInsert);
+				
+			nodeToInsert.setNext(current);
+			size++;
 			checkOverflow();
 		}
 		else
 		{
-			current.getSon().insert(elem);
-			return;
+			current.getChild().insert(elem);
 		}
 	}
 	
-	private void checkOverflow() {
-		if(currentCount > 2*degree)
+	public void delete(T elem)
+	{
+		Node<T> current = left;
+		while(current != null)
 		{
-			//mitte finden
-			Pointer<T> current = left;
-			for (int i = 0; i < degree; i++)
-				current = current.getNext().getP();
-			
-			//linken Teilbaum aufbauen
-			Pointer<T> leftPointer = left;
-			
-			//rechten Teilbaum aufbauen
-			Pointer<T> rightPointer = current.getNext().getP();
-			
-			//mittleres Element entfernen
-			Node<T> middleNode = current.getNext();
-			current.setNext(null);
-			
-			if(fatherTree == null)
+			if(current.isLast())
+				if(isLeaf)
+					throw new IllegalArgumentException("Element not found");
+				else{
+					current.getChild().delete(elem);
+					return;
+				}
+				
+			int comp = current.getElem().compareTo(elem);
+			if(comp == 0)
 			{
-				Pointer<T> r = new Pointer<>();
-				r.setSon(new BTree<>(degree,rightPointer,r,this));
-				middleNode.setP(r);
-				Pointer<T> l = new Pointer<>();
-				l.setSon(new BTree<>(degree, leftPointer,l,this));
-				l.setNext(middleNode);
-				left = l;
-				isLeaf = false;
-				currentCount = 1;
+				//element found
+				if(isLeaf)
+				{
+					if(left == current)
+					{
+						left = current.getNext();
+						current.setNext(null);
+					}
+					else
+						current.getPrev().setNext(current.getNext());
+					size--;
+					checkUnderflow();
+				}
+				else
+				{
+					//hole kleinstes Blatt aus rechtem Teilbaum
+					BTree<T> currentTree = current.getNext().getChild();
+					while(!currentTree.isLeaf)
+						currentTree = currentTree.left.getChild();
+					Node<T> leftNode = currentTree.left;
+					
+					//ersetze damit geloeschtes Element
+					current.setElem(leftNode.getElem());
+					currentTree.left = leftNode.getNext();
+					leftNode.setNext(null);
+					currentTree.size--;
+					currentTree.checkUnderflow();
+				}
+				return;
+			}
+			if(comp > 0)
+				if(isLeaf)
+					throw new IllegalArgumentException("Element not found");
+				else
+				{
+					current.getChild().delete(elem);
+					return;
+				}
+			else
+				current = current.getNext();
+		}
+		throw new IllegalArgumentException("Element not found");
+	}
+	
+	private void checkUnderflow() {
+		if(size < degree)
+		{
+			//find brothers
+			BTree<T> leftBrother = null;
+			BTree<T> rightBrother = null;
+			if(father.getFatherNode().getNext() != null)
+				rightBrother = father.getFatherNode().getNext().getChild();
+			if(father.getFatherNode().getPrev() != null)
+				leftBrother = father.getFatherNode().getPrev().getChild();
+			
+			//Merge
+			if((leftBrother == null && rightBrother.size == degree) || 
+					(rightBrother== null && leftBrother.size == degree) ||
+					(leftBrother !=null && rightBrother != null && 
+					leftBrother.size == degree && rightBrother.size ==degree))
+			{
+				//TODO: Merge
+			}
+			//balance
+			else
+			{
+				//balance with left Brother
+				if(leftBrother != null)
+				{
+					Node<T> current = leftBrother.left;
+					while(!current.isLast())
+						current = current.getNext();
+					Node<T> newLeft = new Node<>(father.getFatherNode().getPrev().getElem());
+					newLeft.setNext(left);
+					newLeft.setChild(current.getChild());
+					left = newLeft;
+					father.getFatherNode().getPrev().setElem(current.getPrev().getElem());
+					current.setChild(current.getPrev().getChild());
+					current.getPrev().getPrev().setNext(current);
+					leftBrother.size--;
+					this.size++;
+				}
+				//balance with right brother
+				else
+				{
+					Node<T> current = left;
+					while(!current.isLast())
+						current = current.getNext();
+					Node<T> newRight = new Node<>(father.getFatherNode().getElem());
+					Node<T> rightBrotherLeft = rightBrother.left;
+					current.getPrev().setNext(newRight);
+					newRight.setNext(current);
+					newRight.setChild(current.getChild());
+					current.setChild(rightBrotherLeft.getChild());
+					father.getFatherNode().setElem(rightBrotherLeft.getElem());
+					rightBrother.left = rightBrotherLeft.getNext();
+					rightBrotherLeft.setNext(null);
+					rightBrother.size--;
+					this.size++;
+				}
+			}
+			
+		}
+	}
+
+	private void checkOverflow() {
+		if(size > 2 * degree)
+		{
+			Node<T> current = left;
+			//find middle element
+			for (int i = 0; i < degree; i++)
+				current = current.getNext();
+			
+			//isroot?
+			if(this.isRoot())
+			{
+				//build left tree
+				BTree<T> tree1 = new BTree<>(this, current);
+				tree1.left = this.left;
+				Node<T> newTailNode = new Node<>();
+				newTailNode.setChild(current.getChild());
+				current.getPrev().setNext(newTailNode);
+				
+				//add new tailNode for Father
+				Node<T> fatherTailNode = new Node<>();
+				
+				//build right tree
+				BTree<T> tree2 = new BTree<>(this, fatherTailNode);
+				tree2.left = current.getNext();
+				
+				//concatenate trees
+				current.setNext(fatherTailNode);
+				fatherTailNode.setChild(tree2);
+				current.setChild(tree1);
+				this.left = current;
+				this.checkLeaf();
+				this.size = 1;
+				tree1.checkLeaf();
+				tree1.size = degree;
+				tree2.checkLeaf();
+				tree2.size = degree;
 			}
 			else
 			{
-				Pointer<T> r = new Pointer<>();
-				r.setNext(fatherPointer.getNext());
-				r.setSon(new BTree<>(degree, rightPointer, r, fatherTree));
-				fatherPointer.setSon(new BTree<>(degree, leftPointer, fatherPointer, fatherTree));
-				fatherPointer.setNext(middleNode);
-				middleNode.setP(r);
-				fatherTree.currentCount ++;
+				//get Father
+				BTree<T> fatherTree = father.getFatherTree();
+				Node<T> fatherNode = father.getFatherNode();
+				
+				//build right tree
+				BTree<T> tree1 = new BTree<>(fatherTree, current);
+				tree1.left = current.getNext();
+				
+				//build left tree from this
+				Node<T> newTailNode = new Node<>();
+				newTailNode.setChild(current.getChild());
+				current.getPrev().setNext(newTailNode);
+				
+				//insert current into father
+				fatherNode.getPrev().setNext(current);
+				current.setNext(fatherNode);
+				
+				//concatenate
+				current.setChild(this);
+				current.getNext().setChild(tree1);
+				tree1.size = degree;
+				this.size = degree;
+				fatherTree.size++;
 				fatherTree.checkOverflow();
 			}
 		}
 	}
 	
-	private void checkUnderFlow()
+	public T get(T elem)
 	{
-		if(currentCount < degree)
+		Node<T> current = left;
+		while(current != null)
 		{
-			BTree<T> rightBrother = null;
-			if(fatherPointer.hasNext())
-				rightBrother = fatherPointer.getNext().getP().getSon();
-			
-			BTree<T> leftBrother = null;
-			if(fatherPointer.hasPrecursor())
-				leftBrother = fatherPointer.getPrecursor().getSon();
-			
-			int maxElements = 0;
-			if(rightBrother != null)
-				maxElements = rightBrother.currentCount;
-			if(leftBrother != null && leftBrother.currentCount > maxElements)
-				maxElements = leftBrother.currentCount;
+			if(current.isLast())
+				if(isLeaf)
+					throw new IllegalArgumentException("Element not found");
+				else
+					return current.getChild().get(elem);
+			int comp = current.getElem().compareTo(elem);
+			if(comp == 0)
+				return current.getElem();
+			if(comp > 0)
+				if(isLeaf)
+					throw new IllegalArgumentException("Element not found");
+				else
+					return current.getChild().get(elem);
+			else
+				current = current.getNext();
 		}
+		throw new IllegalArgumentException("Element not found");
 	}
 	
-	public void delete(T element)
+	private void checkLeaf()
 	{
-		Pointer<T> current = left;
-		while(current.hasNext())
-		{
-			Node<T> node = current.getNext();
-			int comp = element.compareTo(node.getElem());
-			if(comp == 0)
-			{
-				//loesche
-				
-				//element ist im Blatt
-				if(isLeaf)
-				{
-					if(node.getP()!= null)
-						current.setNext(node.getP().getNext());
-					else
-						current.setNext(null);
-					currentCount--;
-					checkUnderFlow();
-				}
-				//element ist kein Blatt
-				else
-				{
-					//kleinsten knoten des rechten teilbaums suchen
-					BTree<T> currentTree = node.getP().getSon();
-					while(currentTree.left.getSon() != null)
-						currentTree = currentTree.left.getSon();
-					
-					//und diesen an die Position des zu loeschenden elements schieben
-					node.setElem(currentTree.left.getNext().getElem());
-					currentTree.delete(node.getElem());
-				}
-				return;
-			}
-			if(comp < 0)
-				if(isLeaf)
-					throw new IllegalArgumentException("element not found");
-				else
-				{
-					current.getSon().delete(element);
-					return;
-				}
-			current = current.getNext().getP();
-		}
-		if(isLeaf)
-			throw new IllegalArgumentException("element not found");
+		if(left == null || left.getChild() == null)
+			isLeaf = true;
 		else
-		{
-			current.getSon().delete(element);
-			return;
-		}
+			isLeaf = false;
+	}
+	
+	public Father<T> getFather()
+	{
+		return father;
+	}
+	
+	public boolean isRoot()
+	{
+		return father.getFatherTree() == null ;
 	}
 
 	public String toString()
 	{
-		StringBuilder sb = new StringBuilder();
-		Queue<BTree<T>> q = new LinkedList<>();
-		q.offer(this);
-		q.offer(null);
-		while(!q.isEmpty())
-		{
-			BTree<T> currentTree = q.poll();
-			if(currentTree != null)
-			{
-				Pointer<T> currentPointer = currentTree.left;
-				sb.append(" |");
-				while(currentPointer.hasNext())
-				{
-					if(currentPointer.getSon() != null)
-						q.offer(currentPointer.getSon());
-					if(currentPointer.hasNext())
-						sb.append(currentPointer.getNext().getElem().toString()+" ");
-					currentPointer = currentPointer.getNext().getP();
-				}
-				sb.append("| ");
-				if(currentPointer.getSon() != null)
-					q.offer(currentPointer.getSon());
-			}
-			else
-			{
-				if(!q.isEmpty())
-				{
-					sb.append("\n");
-					q.offer(null);
-				}
-			}
-		}
-		return sb.toString();
+		return left.toString();
 	}
 	
 	public static void main(String[] args) {
 		BTree<Integer> tree = new BTree<>(2);
-		tree.insert(1);
-		tree.insert(2);
-		tree.insert(300);
-		tree.insert(301);
-		tree.insert(302);
-		tree.insert(3);
-		tree.insert(4);
 		tree.insert(5);
-		
-		//System.out.println(tree);
-		
+		tree.insert(1);
+		tree.insert(3);
+		tree.insert(2);
 		tree.insert(6);
 		tree.insert(7);
 		tree.insert(8);
-		
-		//System.out.println(tree);
-		
-		tree.insert(303);
-		tree.insert(304);
-		tree.insert(305);
-		
-		//System.out.println(tree);
-		
-		tree.insert(306);
-		tree.insert(307);
-		tree.insert(308);
-		
-		System.out.println(tree);
-		
-		tree.delete(300);
-		System.out.println(tree);
+		tree.insert(9);
+		tree.insert(0);
+		tree.delete(5);
 	}
 }
