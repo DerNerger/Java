@@ -1,6 +1,7 @@
 import java.util.LinkedList;
 import java.util.Queue;
 
+
 public class BTree<T extends Comparable<T>> {
 
 	private int degree;
@@ -24,10 +25,10 @@ public class BTree<T extends Comparable<T>> {
 	{
 		this.degree = degree;
 		currentCount = degree;
-		isLeaf = true;
 		this.fatherPointer = fatherPointer;
 		this.fatherTree = fatherTree;
 		this.left = left;
+		isLeaf = left.getSon() == null;
 	}
 	
 	public T getElement(T element)
@@ -65,7 +66,7 @@ public class BTree<T extends Comparable<T>> {
 			{
 				if(isLeaf)
 				{
-					Pointer<T> newPointer = new Pointer<>(node);
+					Pointer<T> newPointer = new Pointer<>(node,current);
 					Node<T> newNode = new Node<T>(elem, newPointer);
 					current.setNext(newNode);
 					currentCount++;
@@ -81,9 +82,17 @@ public class BTree<T extends Comparable<T>> {
 			else
 				current = node.getP();
 		}
-		current.setNext(new Node<T>(elem));
-		currentCount++;
-		checkOverflow();
+		if(isLeaf)
+		{
+			current.setNext(new Node<T>(elem));
+			currentCount++;
+			checkOverflow();
+		}
+		else
+		{
+			current.getSon().insert(elem);
+			return;
+		}
 	}
 	
 	private void checkOverflow() {
@@ -127,6 +136,80 @@ public class BTree<T extends Comparable<T>> {
 				fatherTree.currentCount ++;
 				fatherTree.checkOverflow();
 			}
+		}
+	}
+	
+	private void checkUnderFlow()
+	{
+		if(currentCount < degree)
+		{
+			BTree<T> rightBrother = null;
+			if(fatherPointer.hasNext())
+				rightBrother = fatherPointer.getNext().getP().getSon();
+			
+			BTree<T> leftBrother = null;
+			if(fatherPointer.hasPrecursor())
+				leftBrother = fatherPointer.getPrecursor().getSon();
+			
+			int maxElements = 0;
+			if(rightBrother != null)
+				maxElements = rightBrother.currentCount;
+			if(leftBrother != null && leftBrother.currentCount > maxElements)
+				maxElements = leftBrother.currentCount;
+		}
+	}
+	
+	public void delete(T element)
+	{
+		Pointer<T> current = left;
+		while(current.hasNext())
+		{
+			Node<T> node = current.getNext();
+			int comp = element.compareTo(node.getElem());
+			if(comp == 0)
+			{
+				//loesche
+				
+				//element ist im Blatt
+				if(isLeaf)
+				{
+					if(node.getP()!= null)
+						current.setNext(node.getP().getNext());
+					else
+						current.setNext(null);
+					currentCount--;
+					checkUnderFlow();
+				}
+				//element ist kein Blatt
+				else
+				{
+					//kleinsten knoten des rechten teilbaums suchen
+					BTree<T> currentTree = node.getP().getSon();
+					while(currentTree.left.getSon() != null)
+						currentTree = currentTree.left.getSon();
+					
+					//und diesen an die Position des zu loeschenden elements schieben
+					node.setElem(currentTree.left.getNext().getElem());
+					currentTree.delete(node.getElem());
+				}
+				return;
+			}
+			if(comp < 0)
+				if(isLeaf)
+					throw new IllegalArgumentException("element not found");
+				else
+				{
+					current.getSon().delete(element);
+					return;
+				}
+			current = current.getNext().getP();
+		}
+		if(isLeaf)
+			throw new IllegalArgumentException("element not found");
+		else
+		{
+			current.getSon().delete(element);
+			return;
 		}
 	}
 
@@ -178,7 +261,27 @@ public class BTree<T extends Comparable<T>> {
 		tree.insert(4);
 		tree.insert(5);
 		
+		//System.out.println(tree);
+		
+		tree.insert(6);
+		tree.insert(7);
+		tree.insert(8);
+		
+		//System.out.println(tree);
+		
+		tree.insert(303);
+		tree.insert(304);
+		tree.insert(305);
+		
+		//System.out.println(tree);
+		
+		tree.insert(306);
+		tree.insert(307);
+		tree.insert(308);
+		
+		System.out.println(tree);
+		
+		tree.delete(300);
 		System.out.println(tree);
 	}
-
 }
