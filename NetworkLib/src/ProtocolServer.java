@@ -44,6 +44,7 @@ public class ProtocolServer extends Server implements NetworkInterface{
 			writeToClient(msgToSend, target);
 	}
 	
+	//interface for the user
 	public void sendPacket(Packet p) {
 		networkController.sendPacket(p);
 	}

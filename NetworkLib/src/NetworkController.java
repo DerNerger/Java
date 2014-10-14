@@ -52,6 +52,7 @@ public class NetworkController {
 		receivedPacketsLock.unlock();
 	}
 	
+	//fuegt ein Event der Q hinzu
 	public void addEvent(NetworkEvent eventType, String SessionIdSender)
 	{
 		Packet p = null;
